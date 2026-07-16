@@ -415,4 +415,128 @@ export default function App() {
           <div className="card" style={{ padding: 26 }}>
             {postTab === "work" ? (
               <>
-      
+      <label>عنوان العمل</label>
+                <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="مثلاً: هوية مقهى جبنة" />
+                <label>التصنيف</label>
+                <select value={wCat} onChange={(e) => setWCat(e.target.value)}>
+                  {CATS.slice(1).map((c) => <option key={c}>{c}</option>)}
+                </select>
+                <label>الوصف</label>
+                <textarea rows={4} value={wDesc} onChange={(e) => setWDesc(e.target.value)} placeholder="احكي عن الشغلانة — الفكرة، العميل، الأدوات..." />
+                <label>الصور (الأولى هي الغلاف)</label>
+                <input type="file" accept="image/*" multiple onChange={(e) => setWFiles(e.target.files)} />
+                <button className="btn btn-blue" style={{ width: "100%", marginTop: 24 }} disabled={busy} onClick={publishWork}>
+                  {busy ? "جاري النشر..." : "نشر العمل"}
+                </button>
+              </>
+            ) : (
+              <>
+                <label>عنوان الفرصة</label>
+                <input value={jTitle} onChange={(e) => setJTitle(e.target.value)} placeholder="مثلاً: مصمم هوية لمطعم جديد" />
+                <label>التصنيف</label>
+                <select value={jCat} onChange={(e) => setJCat(e.target.value)}>
+                  {CATS.slice(1).map((c) => <option key={c}>{c}</option>)}
+                </select>
+                <label>الميزانية</label>
+                <input value={jBudget} onChange={(e) => setJBudget(e.target.value)} placeholder="٥٠٠ ألف جنيه / بالاتفاق" />
+                <label>المكان</label>
+                <input value={jLoc} onChange={(e) => setJLoc(e.target.value)} placeholder="الخرطوم / عن بُعد" />
+                <label>التفاصيل</label>
+                <textarea rows={4} value={jDesc} onChange={(e) => setJDesc(e.target.value)} placeholder="شنو المطلوب؟ والتسليم متين؟" />
+                <label>رقم واتساب للتواصل</label>
+                <input dir="ltr" value={jWa} onChange={(e) => setJWa(e.target.value)} placeholder="249XXXXXXXXX" />
+                <button className="btn btn-blue" style={{ width: "100%", marginTop: 24 }} disabled={busy} onClick={publishJob}>
+                  {busy ? "جاري النشر..." : "نشر الفرصة"}
+                </button>
+              </>
+            )}
+            {msg && <div className="notice">{msg}</div>}
+          </div>
+        </section>
+      )}
+
+       {screen === "profile" && (
+        <section className="wrap" style={{ padding: "48px 22px 80px", maxWidth: 880 }}>
+          {!user ? (
+            <div style={{ textAlign: "center", padding: "60px 20px" }}>
+              <p className="sub" style={{ fontSize: 17, marginBottom: 18 }}>سجّل دخول عشان تشوف ملفك.</p>
+              <button className="btn btn-blue" onClick={() => go("auth")}>دخول</button>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <h1 style={{ fontSize: 30 }}>ملفي</h1>
+                <a className="link" style={{ fontSize: 14 }} onClick={doLogout}>تسجيل خروج</a>
+              </div>
+              <div className="card" style={{ padding: 26, margin: "22px 0 40px" }}>
+                <label>الاسم</label>
+                <input value={me?.full_name ?? ""} onChange={(e) => setMe(me ? { ...me, full_name: e.target.value } : me)} />
+                <label>التخصص</label>
+                <input value={me?.specialty ?? ""} onChange={(e) => setMe(me ? { ...me, specialty: e.target.value } : me)} placeholder="هوية بصرية / UI/UX / ..." />
+                <label>المدينة</label>
+                <input value={me?.location ?? ""} onChange={(e) => setMe(me ? { ...me, location: e.target.value } : me)} placeholder="الخرطوم" />
+                <label>رقم واتساب (بيظهر للناس عشان يتواصلوا معاك)</label>
+                <input dir="ltr" value={me?.whatsapp_number ?? ""} onChange={(e) => setMe(me ? { ...me, whatsapp_number: e.target.value } : me)} placeholder="249XXXXXXXXX" />
+                <label>نبذة</label>
+                <textarea rows={3} value={me?.bio ?? ""} onChange={(e) => setMe(me ? { ...me, bio: e.target.value } : me)} />
+                <button className="btn btn-blue" style={{ width: "100%", marginTop: 24 }} disabled={busy} onClick={saveProfile}>
+                  {busy ? "..." : "حفظ الملف"}
+                </button>
+                {msg && <div className="notice">{msg}</div>}
+              </div>
+              <h2 style={{ fontSize: 24, marginBottom: 16 }}>أعمالي</h2>
+              {myProjects.length === 0 ? (
+                <p className="sub">ما نشرت أعمال لسة — <a className="link" onClick={() => { setPostTab("work"); go("post"); }}>انشر أول عمل</a></p>
+              ) : (
+                <div className="grid">
+                  {myProjects.map((p) => (
+                    <a key={p.id} className="card" onClick={() => openProject(p)}>
+                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} />
+                      <div style={{ padding: 16 }}>
+                        <div style={{ fontWeight: 800, fontSize: 17 }}>{p.title}</div>
+                        <div className="sub" style={{ fontSize: 13 }}>{p.category}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+       {screen === "auth" && (
+        <section style={{ minHeight: "70vh", display: "grid", placeItems: "center", padding: "40px 22px" }}>
+          <div className="card" style={{ width: "100%", maxWidth: 400, padding: 30 }}>
+            <h1 style={{ fontSize: 26, textAlign: "center" }}>{authTab === "login" ? "أهلاً تاني" : "حساب جديد"}</h1>
+            <div style={{ display: "flex", gap: 8, margin: "20px 0" }}>
+              <button className={`chip ${authTab === "login" ? "on" : ""}`} style={{ flex: 1 }} onClick={() => { setAuthTab("login"); setMsg(""); }}>دخول</button>
+              <button className={`chip ${authTab === "signup" ? "on" : ""}`} style={{ flex: 1 }} onClick={() => { setAuthTab("signup"); setMsg(""); }}>تسجيل</button>
+            </div>
+            {authTab === "signup" && (
+              <>
+                <label>الاسم</label>
+                <input value={authName} onChange={(e) => setAuthName(e.target.value)} placeholder="اسمك الكامل" />
+              </>
+            )}
+            <label>البريد الإلكتروني</label>
+            <input dir="ltr" type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="you@email.com" />
+            <label>كلمة السر</label>
+            <input dir="ltr" type="password" value={authPass} onChange={(e) => setAuthPass(e.target.value)} placeholder="••••••••" />
+            <button className="btn btn-blue" style={{ width: "100%", marginTop: 24 }} disabled={busy}
+                    onClick={authTab === "login" ? doLogin : doSignup}>
+              {busy ? "..." : authTab === "login" ? "دخول" : "إنشاء الحساب"}
+            </button>
+            <div className="sub" style={{ textAlign: "center", fontSize: 13, margin: "14px 0" }}>أو</div>
+            <button className="btn btn-quiet" style={{ width: "100%" }} onClick={doGoogle}>المتابعة بحساب Google</button>
+            {msg && <div className="notice">{msg}</div>}
+          </div>
+        </section>
+      )}
+
+      <footer style={{ borderTop: `1px solid ${C.line}`, padding: "26px 22px", textAlign: "center" }}>
+        <span className="sub" style={{ fontSize: 13 }}>سودان قاليري · Sudan Gallery · sudangallery.com · اتصمم في السودان</span>
+      </footer>
+    </div>
+     
+  );
+}
