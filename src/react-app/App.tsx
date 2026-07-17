@@ -419,8 +419,8 @@ export default function App() {
         <>
           <section style={{ textAlign: "center", padding: "84px 22px 64px" }}>
             <h1 className="hero-h" style={{ fontSize: 56, lineHeight: 1.15, maxWidth: 700, margin: "0 auto" }}>
-              معرض السودان.<br />
-              <span style={{ color: C.gray }}>منصة سودانية بهوية عالمية</span>
+              منصة سودانية.<br />
+              <span style={{ color: C.gray }}> بهوية عالمية</span>
             </h1>
             
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
