@@ -110,6 +110,8 @@ export default function App() {
   const [jDesc, setJDesc] = useState("");
   const [jWa, setJWa] = useState("");
 
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [myLikes, setMyLikes] = useState<Record<string, boolean>>({});
   const [me, setMe] = useState<ProfileRow | null>(null);
   const [myProjects, setMyProjects] = useState<ProjectRow[]>([]);
 
@@ -174,6 +176,16 @@ export default function App() {
       .eq("status", "published")
       .order("created_at", { ascending: false });
     setJobs((j.data as JobRow[]) ?? []);
+    const l = await supabase.from("likes").select("project_id, user_id");
+    const counts: Record<string, number> = {};
+    const mine: Record<string, boolean> = {};
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    (l.data ?? []).forEach((row: { project_id: string; user_id: string }) => {
+      counts[row.project_id] = (counts[row.project_id] ?? 0) + 1;
+      if (uid && row.user_id === uid) mine[row.project_id] = true;
+    });
+    setLikeCounts(counts);
+    setMyLikes(mine);
   };
 
   useEffect(() => {
@@ -185,12 +197,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setMe(null); setMyProjects([]); return; }
+    loadData();
+    if (!user) { setMe(null); setMyProjects([]); setMyLikes({}); return; }
     supabase.from("profiles").select("*").eq("id", user.id).single()
       .then(({ data }) => setMe((data as ProfileRow) ?? null));
     supabase.from("projects").select("*").eq("owner_id", user.id).order("created_at", { ascending: false })
       .then(({ data }) => setMyProjects((data as ProjectRow[]) ?? []));
-  }, [user, screen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const doSignup = async () => {
     setBusy(true); setMsg("");
@@ -275,6 +289,18 @@ export default function App() {
       setMsg("حصلت مشكلة في النشر — جرّب تاني.");
     }
     setBusy(false);
+  };
+
+  const toggleLike = async (projectId: string) => {
+    if (!user) { go("auth"); return; }
+    const liked = !!myLikes[projectId];
+    setMyLikes({ ...myLikes, [projectId]: !liked });
+    setLikeCounts({ ...likeCounts, [projectId]: (likeCounts[projectId] ?? 0) + (liked ? -1 : 1) });
+    if (liked) {
+      await supabase.from("likes").delete().eq("project_id", projectId).eq("user_id", user.id);
+    } else {
+      await supabase.from("likes").insert({ project_id: projectId, user_id: user.id });
+    }
   };
 
   const saveProfile = async () => {
@@ -390,6 +416,10 @@ export default function App() {
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.gray, marginBottom: 5 }}>{p.category}</div>
                       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>{p.title}</div>
                       <div className="sub" style={{ fontSize: 13 }}>{p.profiles?.full_name ?? "مصمم"}{p.profiles?.location ? ` · ${p.profiles.location}` : ""}</div>
+                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleLike(p.id); }}
+                              style={{ border: "none", background: "none", padding: "8px 0 0", fontSize: 14, fontWeight: 700, color: myLikes[p.id] ? "#E0245E" : C.gray }}>
+                        {myLikes[p.id] ? "❤️" : "🤍"} {likeCounts[p.id] ?? 0}
+                      </button>
                     </div>
                   </a>
                 ))}
@@ -406,6 +436,10 @@ export default function App() {
             <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }}
                     onClick={() => copyText(`${SITE}/#work=${activeProject.id}`, "تم نسخ رابط العمل — شاركو وين ما تحب.")}>
               مشاركة العمل ↗
+            </button>
+            <button onClick={() => toggleLike(activeProject.id)}
+                    className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13, color: myLikes[activeProject.id] ? "#E0245E" : C.ink }}>
+              {myLikes[activeProject.id] ? "❤️" : "🤍"} {likeCounts[activeProject.id] ?? 0}
             </button>
           </div>
           <h1 style={{ fontSize: 38, margin: "16px 0 4px" }}>{activeProject.title}</h1>
