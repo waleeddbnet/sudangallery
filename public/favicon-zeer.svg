@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0071E3"/>
+  <!-- الزير — جرة الموية السودانية -->
+  <!-- فوهة الزير -->
+  <path d="M24 13 Q24 11 26 11 L38 11 Q40 11 40 13 L40 16 Q40 18 38 18 L26 18 Q24 18 24 16 Z" fill="#FFFFFF"/>
+  <!-- رقبة قصيرة -->
+  <path d="M27 18 L37 18 L38 22 L26 22 Z" fill="#FFFFFF" opacity="0.9"/>
+  <!-- جسم الزير المنتفخ -->
+  <path d="M26 22 L38 22 Q49 27 49 37 Q49 48 42 52 L22 52 Q15 48 15 37 Q15 27 26 22 Z" fill="#FFFFFF"/>
+  <!-- قاعدة مدببة صغيرة -->
+  <path d="M26 52 L38 52 L35 57 L29 57 Z" fill="#FFFFFF" opacity="0.85"/>
+  <!-- لمعة الموية على الجنب -->
+  <path d="M22 30 Q20 36 23 43" stroke="#0071E3" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+</svg>
