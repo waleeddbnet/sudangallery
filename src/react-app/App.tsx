@@ -166,7 +166,7 @@ export default function App() {
   const loadData = async () => {
     const p = await supabase
       .from("projects")
-      .select("*, profiles(full_name, location, whatsapp_number, specialty)")
+      .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty)")
       .eq("status", "published")
       .order("created_at", { ascending: false });
     setProjects((p.data as ProjectRow[]) ?? []);
