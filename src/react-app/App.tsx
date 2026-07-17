@@ -136,7 +136,7 @@ export default function App() {
     window.scrollTo(0, 0);
     const { data } = await supabase
       .from("projects")
-      .select("*, profiles(full_name, location, whatsapp_number, specialty), project_images(image_url, position)")
+       .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty), project_images(image_url, position)")
       .eq("id", id)
       .single();
     if (data) setActiveProject(data as ProjectRow);
@@ -172,7 +172,7 @@ export default function App() {
     setProjects((p.data as ProjectRow[]) ?? []);
     const j = await supabase
       .from("jobs")
-      .select("*, profiles!projects_owner_id_fkey(full_name(full_name, whatsapp_number)")
+      .select("*, profiles!jobs_owner_id_fkey(full_name, whatsapp_number)")
       .eq("status", "published")
       .order("created_at", { ascending: false });
     setJobs((j.data as JobRow[]) ?? []);
