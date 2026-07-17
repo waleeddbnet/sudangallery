@@ -137,6 +137,13 @@ export default function App() {
     catch { setMsg(t); }
   };
 
+  const shareLink = async (title: string, url: string) => {
+    if (navigator.share) {
+      try { await navigator.share({ title, url }); return; } catch { /* user cancelled */ }
+    }
+    copyText(url, "تم نسخ الرابط — شاركو وين ما تحب: " + url);
+  };
+
   const openProject = async (idOrRow: string | ProjectRow) => {
     const id = typeof idOrRow === "string" ? idOrRow : idOrRow.id;
     if (typeof idOrRow !== "string") setActiveProject(idOrRow);
@@ -462,7 +469,7 @@ export default function App() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <a className="link" onClick={() => go("home")}>‹ الأعمال</a>
             <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }}
-                    onClick={() => copyText(`${SITE}/#work=${activeProject.id}`, "تم نسخ رابط العمل — شاركو وين ما تحب.")}>
+                    onClick={() => shareLink(activeProject.title, `${SITE}/#work=${activeProject.id}`)}>
               مشاركة العمل ↗
             </button>
             <button onClick={() => toggleLike(activeProject.id)}
@@ -533,7 +540,7 @@ export default function App() {
                     </a>
                   )}
                   <button className="btn btn-quiet"
-                          onClick={() => { const u = `${SITE}/#work=${activeProject.id}`; if (navigator.share) { navigator.share({ title: activeProject.title, url: u }); } else { copyText(u, "تم نسخ رابط العمل — شاركو وين ما تحب."); } }}>
+                          onClick={() => shareLink(designer.full_name ?? "مصمم في سودان قاليري", `${SITE}/#d=${designer.id}`)}>
                     مشاركة الملف ↗
                   </button>
                 </div>
@@ -659,8 +666,8 @@ export default function App() {
               <div className="card" style={{ padding: 20, margin: "18px 0", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: 14, flex: 1, minWidth: 180 }}>رابط ملفك العام — شاركو في البايو والواتساب:</span>
                 <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }}
-                        onClick={() => copyText(`${SITE}/#d=${user.id}`, "تم نسخ رابط ملفك ✓")}>
-                  نسخ الرابط
+                        onClick={() => shareLink("ملفي في سودان قاليري", `${SITE}/#d=${user.id}`)}>
+                  مشاركة الرابط
                 </button>
                 <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }} onClick={() => openDesigner(user.id)}>
                   معاينة
