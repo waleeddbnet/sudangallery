@@ -533,7 +533,7 @@ export default function App() {
                     </a>
                   )}
                   <button className="btn btn-quiet"
-                          onClick={() => copyText(`${SITE}/#d=${designer.id}`, "تم نسخ رابط الملف — شاركو وين ما تحب.")}>
+                          onClick={() => { const u = `${SITE}/#work=${activeProject.id}`; if (navigator.share) { navigator.share({ title: activeProject.title, url: u }); } else { copyText(u, "تم نسخ رابط العمل — شاركو وين ما تحب."); } }}>
                     مشاركة الملف ↗
                   </button>
                 </div>
