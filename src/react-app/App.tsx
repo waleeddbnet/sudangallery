@@ -172,7 +172,7 @@ export default function App() {
     setProjects((p.data as ProjectRow[]) ?? []);
     const j = await supabase
       .from("jobs")
-      .select("*, profiles(full_name, whatsapp_number)")
+      .select("*, profiles!projects_owner_id_fkey(full_name(full_name, whatsapp_number)")
       .eq("status", "published")
       .order("created_at", { ascending: false });
     setJobs((j.data as JobRow[]) ?? []);
