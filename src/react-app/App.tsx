@@ -3,8 +3,8 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
 /* ============================================================
-   سودان قاليري — Sudan Gallery · sudangallery.com
-   Live version — connected to Supabase
+   سودان قاليري — Sudan Gallery · sudangallery.com · v2
+   + صفحة مصمم عامة (#d=id) + روابط أعمال (#work=id) + معرض صور كامل
    ============================================================ */
 
 const C = {
@@ -26,6 +26,8 @@ interface ProfileRow {
   bio: string | null;
 }
 
+interface ImageRow { image_url: string; position: number }
+
 interface ProjectRow {
   id: string;
   owner_id: string;
@@ -34,6 +36,7 @@ interface ProjectRow {
   category: string | null;
   cover_image_url: string | null;
   profiles?: { full_name: string | null; location: string | null; whatsapp_number: string | null; specialty: string | null } | null;
+  project_images?: ImageRow[] | null;
 }
 
 interface JobRow {
@@ -48,6 +51,8 @@ interface JobRow {
 }
 
 const CATS = ["الكل", "هوية بصرية", "UI/UX", "بوسترات", "تغليف", "رسم رقمي", "تصوير", "موشن"];
+
+const SITE = "https://sudangallery.com";
 
 const waLink = (num: string, title: string) =>
   `https://wa.me/${num}?text=${encodeURIComponent(`السلام عليكم، شفت إعلانك في سودان قاليري عن: ${title}`)}`;
@@ -81,24 +86,23 @@ export default function App() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectRow | null>(null);
+  const [designer, setDesigner] = useState<ProfileRow | null>(null);
+  const [designerProjects, setDesignerProjects] = useState<ProjectRow[]>([]);
   const [cat, setCat] = useState("الكل");
   const [postTab, setPostTab] = useState("work");
   const [authTab, setAuthTab] = useState("login");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // auth form
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPass, setAuthPass] = useState("");
 
-  // post work form
   const [wTitle, setWTitle] = useState("");
   const [wCat, setWCat] = useState(CATS[1]);
   const [wDesc, setWDesc] = useState("");
   const [wFiles, setWFiles] = useState<FileList | null>(null);
 
-  // post job form
   const [jTitle, setJTitle] = useState("");
   const [jCat, setJCat] = useState(CATS[1]);
   const [jBudget, setJBudget] = useState("");
@@ -106,12 +110,50 @@ export default function App() {
   const [jDesc, setJDesc] = useState("");
   const [jWa, setJWa] = useState("");
 
-  // profile
   const [me, setMe] = useState<ProfileRow | null>(null);
   const [myProjects, setMyProjects] = useState<ProjectRow[]>([]);
 
-  const go = (s: string) => { setMsg(""); setScreen(s); window.scrollTo(0, 0); };
-  const openProject = (p: ProjectRow) => { setActiveProject(p); go("project"); };
+  const go = (s: string) => {
+    setMsg("");
+    setScreen(s);
+    if (s !== "project" && s !== "designer") history.replaceState(null, "", location.pathname);
+    window.scrollTo(0, 0);
+  };
+
+  const copyText = async (t: string, done: string) => {
+    try { await navigator.clipboard.writeText(t); setMsg(done); }
+    catch { setMsg(t); }
+  };
+
+  const openProject = async (idOrRow: string | ProjectRow) => {
+    const id = typeof idOrRow === "string" ? idOrRow : idOrRow.id;
+    if (typeof idOrRow !== "string") setActiveProject(idOrRow);
+    setScreen("project");
+    setMsg("");
+    history.replaceState(null, "", `#work=${id}`);
+    window.scrollTo(0, 0);
+    const { data } = await supabase
+      .from("projects")
+      .select("*, profiles(full_name, location, whatsapp_number, specialty), project_images(image_url, position)")
+      .eq("id", id)
+      .single();
+    if (data) setActiveProject(data as ProjectRow);
+  };
+
+  const openDesigner = async (id: string) => {
+    setScreen("designer");
+    setMsg("");
+    setDesigner(null);
+    history.replaceState(null, "", `#d=${id}`);
+    window.scrollTo(0, 0);
+    const p = await supabase.from("profiles").select("*").eq("id", id).single();
+    setDesigner((p.data as ProfileRow) ?? null);
+    const w = await supabase
+      .from("projects").select("*")
+      .eq("owner_id", id).eq("status", "published")
+      .order("created_at", { ascending: false });
+    setDesignerProjects((w.data as ProjectRow[]) ?? []);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
@@ -134,7 +176,13 @@ export default function App() {
     setJobs((j.data as JobRow[]) ?? []);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const h = location.hash;
+    if (h.startsWith("#work=")) openProject(h.slice(6));
+    else if (h.startsWith("#d=")) openDesigner(h.slice(3));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user) { setMe(null); setMyProjects([]); return; }
@@ -167,7 +215,7 @@ export default function App() {
 
   const doGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
-    if (error) setMsg("دخول Google غير مفعّل حالياً — استخدم الإيميل.");
+    if (error) setMsg("دخول Google غير متاح حالياً — استخدم الإيميل.");
   };
 
   const doLogout = async () => { await supabase.auth.signOut(); go("home"); };
@@ -242,6 +290,16 @@ export default function App() {
 
   const filtered = cat === "الكل" ? projects : projects.filter((p) => p.category === cat);
 
+  const gallery: string[] = activeProject
+    ? [
+        ...(activeProject.cover_image_url ? [activeProject.cover_image_url] : []),
+        ...((activeProject.project_images ?? [])
+          .slice()
+          .sort((a, b) => a.position - b.position)
+          .map((im) => im.image_url)),
+      ]
+    : [];
+
   return (
     <div dir="rtl" style={{ background: C.canvas, minHeight: "100vh", color: C.ink, fontFamily: "'Almarai','SF Arabic','Segoe UI',Tahoma,sans-serif", textAlign: "right" }}>
       <style>{`
@@ -269,7 +327,7 @@ export default function App() {
         .wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
         .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
         .sub { color: #6E6E73; }
-        .notice { background: #F5F5F7; border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-top: 16px; }
+        .notice { background: #F5F5F7; border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-top: 16px; word-break: break-all; }
         .navlinks { display: flex; gap: 18px; font-size: 14px; font-weight: 700; }
         @media (prefers-reduced-motion: reduce) { .card, .btn { transition: none; } .card:hover { transform: none; } }
         @media (max-width: 640px) { .hero-h { font-size: 38px !important; } .brand-en { display: none; } .navlinks { gap: 12px; } }
@@ -343,25 +401,44 @@ export default function App() {
 
       {screen === "project" && activeProject && (
         <section className="wrap" style={{ padding: "36px 22px 80px", maxWidth: 840 }}>
-          <a className="link" onClick={() => go("home")}>‹ الأعمال</a>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <a className="link" onClick={() => go("home")}>‹ الأعمال</a>
+            <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }}
+                    onClick={() => copyText(`${SITE}/#work=${activeProject.id}`, "تم نسخ رابط العمل — شاركو وين ما تحب.")}>
+              مشاركة العمل ↗
+            </button>
+          </div>
           <h1 style={{ fontSize: 38, margin: "16px 0 4px" }}>{activeProject.title}</h1>
           <div className="sub" style={{ fontSize: 15, marginBottom: 26 }}>{activeProject.category}</div>
-          <div style={{ borderRadius: 20, overflow: "hidden" }}>
-            <Cover url={activeProject.cover_image_url} seed={seedOf(activeProject.id)} height={340} />
-          </div>
-          {activeProject.description && (
-            <p style={{ fontSize: 17, lineHeight: 1.9, margin: "26px 0 36px", maxWidth: 640 }}>{activeProject.description}</p>
-          )}
-          <div className="card" style={{ padding: 22, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginTop: 26 }}>
-            <span style={{ width: 52, height: 52, borderRadius: "50%", background: C.section, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 20 }}>
-              {(activeProject.profiles?.full_name ?? "م")[0]}
-            </span>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <div style={{ fontWeight: 800, fontSize: 18 }}>{activeProject.profiles?.full_name ?? "مصمم"}</div>
-              <div className="sub" style={{ fontSize: 14 }}>
-                {activeProject.profiles?.specialty ?? ""}{activeProject.profiles?.location ? ` · ${activeProject.profiles.location}` : ""}
-              </div>
+
+          {gallery.length === 0 ? (
+            <div style={{ borderRadius: 20, overflow: "hidden" }}>
+              <Cover seed={seedOf(activeProject.id)} height={340} />
             </div>
+          ) : (
+            <div style={{ display: "grid", gap: 16 }}>
+              {gallery.map((u, i) => (
+                <div key={i} style={{ borderRadius: 20, overflow: "hidden" }}>
+                  <img src={u} alt="" style={{ width: "100%", display: "block" }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeProject.description && (
+            <p style={{ fontSize: 17, lineHeight: 1.9, margin: "26px 0 10px", maxWidth: 640 }}>{activeProject.description}</p>
+          )}
+
+          <div className="card" style={{ padding: 22, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginTop: 26 }}>
+            <a onClick={() => openDesigner(activeProject.owner_id)} style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 200 }}>
+              <span style={{ width: 52, height: 52, borderRadius: "50%", background: C.section, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 20 }}>
+                {(activeProject.profiles?.full_name ?? "م")[0]}
+              </span>
+              <span>
+                <span style={{ display: "block", fontWeight: 800, fontSize: 18 }}>{activeProject.profiles?.full_name ?? "مصمم"}</span>
+                <span className="sub" style={{ display: "block", fontSize: 13 }}>شوف كل أعمالو ‹</span>
+              </span>
+            </a>
             {activeProject.profiles?.whatsapp_number && (
               <a className="btn" style={{ background: C.green, color: "#fff" }}
                  href={waLink(activeProject.profiles.whatsapp_number, activeProject.title)} target="_blank" rel="noreferrer">
@@ -369,6 +446,58 @@ export default function App() {
               </a>
             )}
           </div>
+          {msg && <div className="notice">{msg}</div>}
+        </section>
+      )}
+
+      {screen === "designer" && (
+        <section className="wrap" style={{ padding: "48px 22px 80px", maxWidth: 880 }}>
+          {!designer ? (
+            <p className="sub" style={{ textAlign: "center", padding: "50px 0" }}>...</p>
+          ) : (
+            <>
+              <div style={{ textAlign: "center", marginBottom: 30 }}>
+                <span style={{ width: 88, height: 88, borderRadius: "50%", background: C.section, display: "inline-grid", placeItems: "center", fontWeight: 800, fontSize: 34 }}>
+                  {(designer.full_name ?? "م")[0]}
+                </span>
+                <h1 style={{ fontSize: 32, margin: "14px 0 4px" }}>{designer.full_name ?? "مصمم"}</h1>
+                <div className="sub" style={{ fontSize: 15 }}>
+                  {designer.specialty ?? ""}{designer.location ? ` · ${designer.location}` : ""}
+                </div>
+                {designer.bio && (
+                  <p className="sub" style={{ fontSize: 15, maxWidth: 440, margin: "10px auto 0", lineHeight: 1.7 }}>{designer.bio}</p>
+                )}
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 18 }}>
+                  {designer.whatsapp_number && (
+                    <a className="btn" style={{ background: C.green, color: "#fff" }}
+                       href={waLink(designer.whatsapp_number, "ملفك في سودان قاليري")} target="_blank" rel="noreferrer">
+                      تواصل واتساب
+                    </a>
+                  )}
+                  <button className="btn btn-quiet"
+                          onClick={() => copyText(`${SITE}/#d=${designer.id}`, "تم نسخ رابط الملف — شاركو وين ما تحب.")}>
+                    مشاركة الملف ↗
+                  </button>
+                </div>
+                {msg && <div className="notice" style={{ maxWidth: 440, margin: "16px auto 0" }}>{msg}</div>}
+              </div>
+              {designerProjects.length === 0 ? (
+                <p className="sub" style={{ textAlign: "center" }}>ما في أعمال منشورة بعد.</p>
+              ) : (
+                <div className="grid">
+                  {designerProjects.map((p) => (
+                    <a key={p.id} className="card" onClick={() => openProject(p)}>
+                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} />
+                      <div style={{ padding: 16 }}>
+                        <div style={{ fontWeight: 800, fontSize: 17 }}>{p.title}</div>
+                        <div className="sub" style={{ fontSize: 13 }}>{p.category}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </section>
       )}
 
@@ -415,7 +544,7 @@ export default function App() {
           <div className="card" style={{ padding: 26 }}>
             {postTab === "work" ? (
               <>
-      <label>عنوان العمل</label>
+                <label>عنوان العمل</label>
                 <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="مثلاً: هوية مقهى جبنة" />
                 <label>التصنيف</label>
                 <select value={wCat} onChange={(e) => setWCat(e.target.value)}>
@@ -455,7 +584,7 @@ export default function App() {
         </section>
       )}
 
-       {screen === "profile" && (
+      {screen === "profile" && (
         <section className="wrap" style={{ padding: "48px 22px 80px", maxWidth: 880 }}>
           {!user ? (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -468,7 +597,19 @@ export default function App() {
                 <h1 style={{ fontSize: 30 }}>ملفي</h1>
                 <a className="link" style={{ fontSize: 14 }} onClick={doLogout}>تسجيل خروج</a>
               </div>
-              <div className="card" style={{ padding: 26, margin: "22px 0 40px" }}>
+
+              <div className="card" style={{ padding: 20, margin: "18px 0", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: 14, flex: 1, minWidth: 180 }}>رابط ملفك العام — شاركو في البايو والواتساب:</span>
+                <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }}
+                        onClick={() => copyText(`${SITE}/#d=${user.id}`, "تم نسخ رابط ملفك ✓")}>
+                  نسخ الرابط
+                </button>
+                <button className="btn btn-quiet" style={{ padding: "8px 16px", fontSize: 13 }} onClick={() => openDesigner(user.id)}>
+                  معاينة
+                </button>
+              </div>
+
+              <div className="card" style={{ padding: 26, margin: "0 0 40px" }}>
                 <label>الاسم</label>
                 <input value={me?.full_name ?? ""} onChange={(e) => setMe(me ? { ...me, full_name: e.target.value } : me)} />
                 <label>التخصص</label>
@@ -504,7 +645,8 @@ export default function App() {
           )}
         </section>
       )}
-       {screen === "auth" && (
+
+      {screen === "auth" && (
         <section style={{ minHeight: "70vh", display: "grid", placeItems: "center", padding: "40px 22px" }}>
           <div className="card" style={{ width: "100%", maxWidth: 400, padding: 30 }}>
             <h1 style={{ fontSize: 26, textAlign: "center" }}>{authTab === "login" ? "أهلاً تاني" : "حساب جديد"}</h1>
@@ -537,6 +679,5 @@ export default function App() {
         <span className="sub" style={{ fontSize: 13 }}>سودان قاليري · Sudan Gallery · sudangallery.com · اتصمم في السودان</span>
       </footer>
     </div>
-     
   );
 }
