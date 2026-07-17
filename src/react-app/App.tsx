@@ -20,6 +20,7 @@ const C = {
 interface ProfileRow {
   id: string;
   full_name: string | null;
+  avatar_url: string | null;
   specialty: string | null;
   location: string | null;
   whatsapp_number: string | null;
@@ -35,7 +36,7 @@ interface ProjectRow {
   description: string | null;
   category: string | null;
   cover_image_url: string | null;
-  profiles?: { full_name: string | null; location: string | null; whatsapp_number: string | null; specialty: string | null } | null;
+  profiles?: { full_name: string | null; location: string | null; whatsapp_number: string | null; specialty: string | null; avatar_url?: string | null } | null;
   project_images?: ImageRow[] | null;
 }
 
@@ -77,6 +78,15 @@ const Cover = ({ url, seed = 1, height = 210 }: { url?: string | null; seed?: nu
     <div style={{ height, background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, display: "grid", placeItems: "center" }}>
       <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,.65)" }} />
     </div>
+  );
+};
+
+const Avatar = ({ url, name, size = 52 }: { url?: string | null; name?: string | null; size?: number }) => {
+  if (url) return <img src={url} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", display: "inline-block", verticalAlign: "middle" }} />;
+  return (
+    <span style={{ width: size, height: size, borderRadius: "50%", background: "#F5F5F7", display: "inline-grid", placeItems: "center", fontWeight: 800, fontSize: size * 0.4 }}>
+      {(name ?? "م")[0]}
+    </span>
   );
 };
 
@@ -136,7 +146,7 @@ export default function App() {
     window.scrollTo(0, 0);
     const { data } = await supabase
       .from("projects")
-       .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty), project_images(image_url, position)")
+      .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty, avatar_url), project_images(image_url, position)")
       .eq("id", id)
       .single();
     if (data) setActiveProject(data as ProjectRow);
@@ -166,7 +176,7 @@ export default function App() {
   const loadData = async () => {
     const p = await supabase
       .from("projects")
-      .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty)")
+      .select("*, profiles!projects_owner_id_fkey(full_name, location, whatsapp_number, specialty, avatar_url)")
       .eq("status", "published")
       .order("created_at", { ascending: false });
     setProjects((p.data as ProjectRow[]) ?? []);
@@ -301,6 +311,24 @@ export default function App() {
     } else {
       await supabase.from("likes").insert({ project_id: projectId, user_id: user.id });
     }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!user) return;
+    setBusy(true); setMsg("");
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("avatars").upload(path, file);
+      if (up.error) throw up.error;
+      const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+      setMe(me ? { ...me, avatar_url: url } : me);
+      setMsg("تم تحديث صورتك ✓");
+    } catch {
+      setMsg("حصلت مشكلة في رفع الصورة — جرّب صورة أصغر.");
+    }
+    setBusy(false);
   };
 
   const saveProfile = async () => {
@@ -465,9 +493,7 @@ export default function App() {
 
           <div className="card" style={{ padding: 22, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginTop: 26 }}>
             <a onClick={() => openDesigner(activeProject.owner_id)} style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 200 }}>
-              <span style={{ width: 52, height: 52, borderRadius: "50%", background: C.section, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 20 }}>
-                {(activeProject.profiles?.full_name ?? "م")[0]}
-              </span>
+              <Avatar url={activeProject.profiles?.avatar_url} name={activeProject.profiles?.full_name} />
               <span>
                 <span style={{ display: "block", fontWeight: 800, fontSize: 18 }}>{activeProject.profiles?.full_name ?? "مصمم"}</span>
                 <span className="sub" style={{ display: "block", fontSize: 13 }}>شوف كل أعمالو ‹</span>
@@ -491,9 +517,7 @@ export default function App() {
           ) : (
             <>
               <div style={{ textAlign: "center", marginBottom: 30 }}>
-                <span style={{ width: 88, height: 88, borderRadius: "50%", background: C.section, display: "inline-grid", placeItems: "center", fontWeight: 800, fontSize: 34 }}>
-                  {(designer.full_name ?? "م")[0]}
-                </span>
+                <Avatar url={designer.avatar_url} name={designer.full_name} size={88} />
                 <h1 style={{ fontSize: 32, margin: "14px 0 4px" }}>{designer.full_name ?? "مصمم"}</h1>
                 <div className="sub" style={{ fontSize: 15 }}>
                   {designer.specialty ?? ""}{designer.location ? ` · ${designer.location}` : ""}
@@ -644,6 +668,14 @@ export default function App() {
               </div>
 
               <div className="card" style={{ padding: 26, margin: "0 0 40px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  <Avatar url={me?.avatar_url} name={me?.full_name} size={72} />
+                  <div>
+                    <label style={{ margin: "0 0 7px" }}>صورتك الشخصية</label>
+                    <input type="file" accept="image/*" style={{ padding: 8, fontSize: 13 }}
+                           onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
+                  </div>
+                </div>
                 <label>الاسم</label>
                 <input value={me?.full_name ?? ""} onChange={(e) => setMe(me ? { ...me, full_name: e.target.value } : me)} />
                 <label>التخصص</label>
