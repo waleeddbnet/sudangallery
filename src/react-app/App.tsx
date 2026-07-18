@@ -64,8 +64,8 @@ const seedOf = (s: string) => {
   return n;
 };
 
-const Cover = ({ url, seed = 1, height = 210 }: { url?: string | null; seed?: number; height?: number }) => {
-  if (url) return <img src={url} alt="" style={{ width: "100%", height, objectFit: "cover", display: "block" }} />;
+const Cover = ({ url, seed = 1, height = 210, natural = false }: { url?: string | null; seed?: number; height?: number; natural?: boolean }) => {
+  if (url) return <img src={url} alt="" loading="lazy" style={natural ? { width: "100%", display: "block" } : { width: "100%", height, objectFit: "cover", display: "block" }} />;
   const g = [
     ["#DCE9FF", "#F3E8FF"],
     ["#FFE9D6", "#FFF6E5"],
@@ -102,6 +102,7 @@ export default function App() {
   const [postTab, setPostTab] = useState("work");
   const [authTab, setAuthTab] = useState("login");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
 
   const [authName, setAuthName] = useState("");
@@ -203,6 +204,7 @@ export default function App() {
     });
     setLikeCounts(counts);
     setMyLikes(mine);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -349,6 +351,16 @@ export default function App() {
     setMsg("تم حفظ ملفك.");
   };
 
+  useEffect(() => {
+    const els = document.querySelectorAll(".reveal:not(.in)");
+    if (!("IntersectionObserver" in window)) { els.forEach((el) => el.classList.add("in")); return; }
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); obs.unobserve(en.target); } });
+    }, { rootMargin: "60px" });
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  });
+
   const filtered = cat === "الكل" ? projects : projects.filter((p) => p.category === cat);
 
   const gallery: string[] = activeProject
@@ -386,11 +398,22 @@ export default function App() {
         input::placeholder, textarea::placeholder { color: #A1A1A6; }
         label { display: block; font-weight: 700; font-size: 14px; margin: 18px 0 7px; }
         .wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
-        .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        .grid { columns: 2 160px; column-gap: 14px; }
+        @media (min-width: 700px) { .grid { columns: 3 220px; column-gap: 18px; } }
+        .grid .card { break-inside: avoid; margin-bottom: 14px; display: block; }
+        @media (min-width: 700px) { .grid .card { margin-bottom: 18px; } }
+        .card img { transition: transform .35s ease; }
+        .card:hover img { transform: scale(1.03); }
+        .reveal { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
+        .reveal.in { opacity: 1; transform: none; }
+        .skel { background: linear-gradient(90deg, #EEEEF1 25%, #F7F7F9 50%, #EEEEF1 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 18px; break-inside: avoid; margin-bottom: 14px; }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+        @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+        .liked-anim { display: inline-block; animation: pop .3s ease; }
         .sub { color: #6E6E73; }
         .notice { background: #F5F5F7; border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-top: 16px; word-break: break-all; }
         .navlinks { display: flex; gap: 18px; font-size: 14px; font-weight: 700; }
-        @media (prefers-reduced-motion: reduce) { .card, .btn { transition: none; } .card:hover { transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .card, .btn, .card img, .reveal { transition: none; animation: none; } .card:hover { transform: none; } .card:hover img { transform: none; } .reveal { opacity: 1; transform: none; } .skel, .liked-anim { animation: none; } }
         @media (max-width: 640px) { .hero-h { font-size: 38px !important; } .brand-en { display: none; } .navlinks { gap: 12px; } }
       `}</style>
 
@@ -419,10 +442,12 @@ export default function App() {
         <>
           <section style={{ textAlign: "center", padding: "84px 22px 64px" }}>
             <h1 className="hero-h" style={{ fontSize: 56, lineHeight: 1.15, maxWidth: 700, margin: "0 auto" }}>
-              منصة سودانية.<br />
-              <span style={{ color: C.gray }}> بهوية عالمية</span>
+              معرض السودان.<br />
+              <span style={{ color: C.gray }}>مفتوح للعالم.</span>
             </h1>
-            
+            <p className="sub" style={{ fontSize: 19, maxWidth: 520, margin: "20px auto 32px", lineHeight: 1.7 }}>
+              اعرض إبداعك، شوف شغل الناس، ولقّط فرص. ببساطة.
+            </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-blue" onClick={() => go("post")}>انشر شغلك</button>
               <button className="btn btn-quiet" onClick={() => go("jobs")}>شوف الفرص</button>
@@ -435,7 +460,11 @@ export default function App() {
                 <button key={c} className={`chip ${cat === c ? "on" : ""}`} onClick={() => setCat(c)}>{c}</button>
               ))}
             </div>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="grid">
+                {[210, 300, 240, 320, 200, 280].map((h, i) => <div key={i} className="skel" style={{ height: h }} />)}
+              </div>
+            ) : filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px" }}>
                 <p className="sub" style={{ fontSize: 17, marginBottom: 18 }}>لسة ما في أعمال منشورة هنا.</p>
                 <button className="btn btn-blue" onClick={() => go("post")}>كن أول من ينشر</button>
@@ -443,15 +472,15 @@ export default function App() {
             ) : (
               <div className="grid">
                 {filtered.map((p) => (
-                  <a key={p.id} className="card" onClick={() => openProject(p)}>
-                    <Cover url={p.cover_image_url} seed={seedOf(p.id)} />
+                  <a key={p.id} className="card reveal" onClick={() => openProject(p)}>
+                    <Cover url={p.cover_image_url} seed={seedOf(p.id)} natural />
                     <div style={{ padding: 18 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.gray, marginBottom: 5 }}>{p.category}</div>
                       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>{p.title}</div>
                       <div className="sub" style={{ fontSize: 13 }}>{p.profiles?.full_name ?? "مصمم"}{p.profiles?.location ? ` · ${p.profiles.location}` : ""}</div>
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleLike(p.id); }}
                               style={{ border: "none", background: "none", padding: "8px 0 0", fontSize: 14, fontWeight: 700, color: myLikes[p.id] ? "#E0245E" : C.gray }}>
-                        {myLikes[p.id] ? "❤️" : "🤍"} {likeCounts[p.id] ?? 0}
+                        <span className={myLikes[p.id] ? "liked-anim" : ""}>{myLikes[p.id] ? "❤️" : "🤍"}</span> {likeCounts[p.id] ?? 0}
                       </button>
                     </div>
                   </a>
@@ -549,8 +578,8 @@ export default function App() {
               ) : (
                 <div className="grid">
                   {designerProjects.map((p) => (
-                    <a key={p.id} className="card" onClick={() => openProject(p)}>
-                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} />
+                    <a key={p.id} className="card reveal" onClick={() => openProject(p)}>
+                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} natural />
                       <div style={{ padding: 16 }}>
                         <div style={{ fontWeight: 800, fontSize: 17 }}>{p.title}</div>
                         <div className="sub" style={{ fontSize: 13 }}>{p.category}</div>
@@ -702,8 +731,8 @@ export default function App() {
               ) : (
                 <div className="grid">
                   {myProjects.map((p) => (
-                    <a key={p.id} className="card" onClick={() => openProject(p)}>
-                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} />
+                    <a key={p.id} className="card reveal" onClick={() => openProject(p)}>
+                      <Cover url={p.cover_image_url} seed={seedOf(p.id)} height={180} natural />
                       <div style={{ padding: 16 }}>
                         <div style={{ fontWeight: 800, fontSize: 17 }}>{p.title}</div>
                         <div className="sub" style={{ fontSize: 13 }}>{p.category}</div>
@@ -747,7 +776,7 @@ export default function App() {
       )}
 
       <footer style={{ borderTop: `1px solid ${C.line}`, padding: "26px 22px", textAlign: "center" }}>
-        <span className="sub" style={{ fontSize: 13 }}>سودان قاليري · Sudan Gallery · sudangallery.com ·</span>
+        <span className="sub" style={{ fontSize: 13 }}>سودان قاليري · Sudan Gallery · sudangallery.com · اتصمم في السودان</span>
       </footer>
     </div>
   );
