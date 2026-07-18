@@ -442,8 +442,8 @@ export default function App() {
         <>
           <section style={{ textAlign: "center", padding: "84px 22px 64px" }}>
             <h1 className="hero-h" style={{ fontSize: 56, lineHeight: 1.15, maxWidth: 700, margin: "0 auto" }}>
-              معرض السودان.<br />
-              <span style={{ color: C.gray }}>مفتوح للعالم.</span>
+               منصة سودانية.<br />
+              <span style={{ color: C.gray }}>بهوية عالمية</span>
             </h1>
             <p className="sub" style={{ fontSize: 19, maxWidth: 520, margin: "20px auto 32px", lineHeight: 1.7 }}>
               اعرض إبداعك، شوف شغل الناس، ولقّط فرص. ببساطة.
