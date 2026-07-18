@@ -54,6 +54,21 @@ interface JobRow {
 const CATS = ["الكل", "هوية بصرية", "UI/UX", "بوسترات", "تغليف", "رسم رقمي", "تصوير", "موشن"];
 
 const SITE = "https://sudangallery.com";
+const GOOGLE_CLIENT_ID = "36956996596-n1q97b8qkrgbhdhv1to2imbf87ner2jk.apps.googleusercontent.com";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: object) => void;
+          prompt: () => void;
+          cancel: () => void;
+        };
+      };
+    };
+  }
+}
 
 const waLink = (num: string, title: string) =>
   `https://wa.me/${num}?text=${encodeURIComponent(`السلام عليكم، شفت إعلانك في سودان قاليري عن: ${title}`)}`;
@@ -180,6 +195,36 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Google One Tap — يظهر تلقائياً للزائر غير المسجّل
+  useEffect(() => {
+    if (user) { window.google?.accounts.id.cancel(); return; }
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      if (window.google?.accounts?.id) {
+        clearInterval(timer);
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async (resp: { credential: string }) => {
+            const { error } = await supabase.auth.signInWithIdToken({
+              provider: "google",
+              token: resp.credential,
+            });
+            if (!error) setMsg("");
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          context: "signin",
+        });
+        window.google.accounts.id.prompt();
+      } else if (tries > 20) {
+        clearInterval(timer);
+      }
+    }, 500);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const loadData = async () => {
     const p = await supabase
@@ -442,10 +487,9 @@ export default function App() {
         <>
           <section style={{ textAlign: "center", padding: "84px 22px 64px" }}>
             <h1 className="hero-h" style={{ fontSize: 56, lineHeight: 1.15, maxWidth: 700, margin: "0 auto" }}>
-               منصة سودانية.<br />
+              منصة سودانية.<br />
               <span style={{ color: C.gray }}>بهوية عالمية</span>
             </h1>
-            
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-blue" onClick={() => go("post")}>انشر شغلك</button>
               <button className="btn btn-quiet" onClick={() => go("jobs")}>شوف الفرص</button>
