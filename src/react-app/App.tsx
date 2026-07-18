@@ -54,7 +54,7 @@ interface JobRow {
 const CATS = ["الكل", "هوية بصرية", "UI/UX", "بوسترات", "تغليف", "رسم رقمي", "تصوير", "موشن"];
 
 const SITE = "https://sudangallery.com";
-const GOOGLE_CLIENT_ID = "36956996596-n1q97b8qkrgbhdhv1to2imbf87ner2jk.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "36956996596-prvmdqr8gpnq3e26433jah8f0bpbfgrl.apps.googleusercontent.com";
 
 declare global {
   interface Window {
