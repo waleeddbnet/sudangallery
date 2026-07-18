@@ -445,9 +445,7 @@ export default function App() {
                منصة سودانية.<br />
               <span style={{ color: C.gray }}>بهوية عالمية</span>
             </h1>
-            <p className="sub" style={{ fontSize: 19, maxWidth: 520, margin: "20px auto 32px", lineHeight: 1.7 }}>
-              اعرض إبداعك، شوف شغل الناس، ولقّط فرص. ببساطة.
-            </p>
+            
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-blue" onClick={() => go("post")}>انشر شغلك</button>
               <button className="btn btn-quiet" onClick={() => go("jobs")}>شوف الفرص</button>
